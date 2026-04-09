@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BREWLOG — 브루잉 레시피 앱</title>
+<style>
+  :root {
+    --gold: #C9A84C; --gold-light: #E8C96A; --gold-dark: #A07830;
+    --black: #111111; --black-soft: #1A1A1A; --black-mid: #2A2A2A;
+    --gray-dark: #333333; --gray-mid: #555555; --gray-light: #888888;
+    --white: #FAFAF5; --danger: #C0392B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--black); color: var(--white); min-height: 100vh; }
+  .app { max-width: 900px; margin: 0 auto; padding: 0 0 60px; }
+  .header { background: var(--black-soft); border-bottom: 2px solid var(--gold); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 20px; font-weight: 600; color: var(--gold); letter-spacing: 2px; }
+  .logo span { color: var(--white); font-weight: 400; }
+  .btn-write { background: var(--gold); color: var(--black); border: none; border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .btn-write:hover { background: var(--gold-light); }
+  .stats-bar { background: var(--black-mid); border-bottom: 1px solid var(--gray-dark); padding: 8px 20px; font-size: 12px; color: var(--gray-light); }
+  .stats-bar span { color: var(--gold); font-weight: 600; }
+  .recipes-list { padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-mid); }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; }
+  .recipe-card { background: var(--black-soft); border: 1px solid var(--gray-dark); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .recipe-card:hover { border-color: var(--gold-dark); }
+  .card-header { background: var(--black-mid); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .card-author { display: flex; align-items: center; gap: 10px; }
+  .author-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gold-dark); color: var(--black); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .author-name { font-size: 14px; font-weight: 600; color: var(--white); }
+  .card-meta { font-size: 12px; color: var(--gray-light); margin-top: 2px; }
+  .card-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .follow-badge { background: var(--black); border: 1px solid var(--gold-dark); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--gold); cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .follow-badge:hover { background: var(--gold-dark); color: var(--black); }
+  .follow-badge.checked { background: var(--gold); color: var(--black); border-color: var(--gold); }
+  .expand-arrow { background: none; border: none; color: var(--gray-light); cursor: pointer; font-size: 14px; padding: 4px 6px; }
+  .card-summary { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { background: var(--black-mid); border: 1px solid var(--gray-dark); border-radius: 4px; padding: 3px 8px; font-size: 11px; color: var(--gray-light); }
+  .tag.gold { border-color: var(--gold-dark); color: var(--gold); }
+  .card-detail { display: none; padding: 0 16px 16px; }
+  .card-detail.open { display: block; }
+  .section-title { font-size: 11px; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; border-bottom: 1px solid var(--gray-dark); padding-bottom: 6px; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .info-item { background: var(--black-mid); border-radius: 6px; padding: 8px 10px; }
+  .info-label { font-size: 11px; color: var(--gray-light); margin-bottom: 3px; }
+  .info-val { font-size: 13px; color: var(--white); font-weight: 500; }
+  .text-block { background: var(--black-mid); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: #ccc; line-height: 1.8; white-space: pre-wrap; margin-top: 8px; }
+  .tds-box { background: var(--black-mid); border: 1px solid var(--gold-dark); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-around; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
+  .tds-item { text-align: center; }
+  .tds-label { font-size: 11px; color: var(--gold-light); margin-bottom: 4px; }
+  .tds-value { font-size: 17px; font-weight: 600; color: var(--gold); }
+  .cupnote-wrap { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 6px; }
+  .cupnote-radar { flex: 0 0 200px; }
+  .cupnote-scores { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+  .score-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .score-label { width: 64px; color: var(--gray-light); flex-shrink: 0; }
+  .score-dots { display: flex; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gray-dark); }
+  .dot.on { background: var(--gold); }
+  .card-delete { text-align: right; margin-top: 14px; }
+  .btn-delete { background: none; border: 1px solid var(--danger); color: var(--danger); border-radius: 5px; padding: 5px 14px; font-size: 12px; cursor: pointer; }
+  .btn-delete:hover { background: var(--danger); color: #fff; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; align-items: flex-start; justify-content: center; padding: 20px 16px 40px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--black-soft); border: 1px solid var(--gold-dark); border-radius: 12px; width: 100%; max-width: 660px; padding: 24px; }
+  .modal-title { font-size: 17px; font-weight: 600; color: var(--gold); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-dark); }
+  .form-row { margin-bottom: 13px; }
+  .form-row label { display: block; font-size: 12px; color: var(--gold-light); margin-bottom: 5px; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; background: var(--black-mid); border: 1px solid var(--gray-dark);
+    border-radius: 6px; color: var(--white); padding: 8px 10px; font-size: 13px; font-family: inherit;
+  }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--gold); }
+  .form-row select option { background: var(--black-mid); }
+  .form-row textarea { resize: vertical; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .form-section-label { font-size: 11px; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 10px; padding-bottom: 5px; border-bottom: 1px solid var(--gray-dark); }
+  .tds-calc-display { background: var(--black-mid); border: 1px solid var(--gold-dark); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--gold); text-align: center; margin-top: 6px; }
+  .cupnote-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .cn-item label { font-size: 12px; color: var(--gold-light); display: block; margin-bottom: 6px; }
+  .star-row { display: flex; gap: 6px; }
+  .star-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gray-dark); background: var(--black-mid); color: var(--gray-light); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; transition: background 0.15s; }
+  .star-btn.active { background: var(--gold); color: var(--black); border-color: var(--gold); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .btn-cancel { background: none; border: 1px solid var(--gray-dark); color: var(--gray-light); border-radius: 6px; padding: 9px 20px; font-size: 13px; cursor: pointer; }
+  .btn-submit { background: var(--gold); color: var(--black); border: none; border-radius: 6px; padding: 9px 24px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-submit:hover { background: var(--gold-light); }
+
+  /* PW Modal */
+  .pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 2000; align-items: center; justify-content: center; }
+  .pw-modal-overlay.open { display: flex; }
+  .pw-modal { background: var(--black-soft); border: 1px solid var(--gold-dark); border-radius: 10px; padding: 28px 24px; width: 300px; }
+  .pw-title { font-size: 15px; color: var(--gold); margin-bottom: 16px; text-align: center; font-weight: 600; }
+  .pw-input { width: 100%; background: var(--black-mid); border: 1px solid var(--gray-dark); border-radius: 6px; color: var(--white); padding: 10px 12px; font-size: 14px; margin-bottom: 10px; }
+  .pw-error { font-size: 12px; color: var(--danger); margin-bottom: 10px; min-height: 16px; text-align: center; }
+  .pw-actions { display: flex; gap: 8px; }
+  .pw-btn-ok { flex: 1; background: var(--gold); color: var(--black); border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .pw-btn-cancel { flex: 1; background: none; border: 1px solid var(--gray-dark); color: var(--gray-light); border-radius: 6px; padding: 10px; font-size: 13px; cursor: pointer; }
+
+  @media (max-width: 540px) {
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+    .cupnote-form { grid-template-columns: 1fr; }
+    .cupnote-wrap { flex-direction: column; }
+    .cupnote-radar { flex: none; width: 100%; display: flex; justify-content: center; }
+    .modal { padding: 16px; }
+    .card-right { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="logo">BREW<span>LOG</span></div>
+    <button class="btn-write" onclick="openWrite()">+ 레시피 작성</button>
+  </div>
+  <div class="stats-bar">
+    레시피 <span id="totalCount">0</span>개 &nbsp;·&nbsp; 총 따라해봤어요 <span id="totalFollows">0</span>회
+  </div>
+  <div class="recipes-list" id="recipesList">
+    <div class="empty-state">
+      <div class="empty-icon">☕</div>
+      <p>첫 번째 브루잉 레시피를 작성해보세요!</p>
+    </div>
+  </div>
+</div>
+
+<!-- Write Modal -->
+<div class="modal-overlay" id="writeModal">
+  <div class="modal">
+    <div class="modal-title">☕ 브루잉 레시피 작성</div>
+
+    <div class="form-section-label">작성자 정보</div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>작성자 *</label><input id="f_author" placeholder="이름 또는 닉네임" /></div>
+      <div class="form-row"><label>일시</label><input id="f_date" type="datetime-local" /></div>
+    </div>
+
+    <div class="form-section-label">원두 정보</div>
+    <div class="form-row"><label>국가 *</label>
+      <select id="f_country">
+        <option value="">국가 선택</option>
+        <optgroup label="🌍 아프리카">
+          <option>에티오피아</option><option>케냐</option><option>예멘</option><option>탄자니아</option><option>르완다</option>
+          <option>우간다</option><option>부룬디</option><option>콩고민주공화국</option><option>카메룬</option><option>말라위</option>
+          <option>잠비아</option><option>짐바브웨</option><option>코트디부아르</option><option>가나</option><option>나이지리아</option>
+          <option>토고</option><option>기니</option><option>마다가스카르</option>
+        </optgroup>
+        <optgroup label="🌎 중남미">
+          <option>브라질</option><option>콜롬비아</option><option>코스타리카</option><option>과테말라</option><option>멕시코</option>
+          <option>파나마</option><option>볼리비아</option><option>에콰도르</option><option>니카라과</option><option>엘살바도르</option>
+          <option>자메이카</option><option>도미니카공화국</option><option>쿠바</option><option>온두라스</option><option>페루</option>
+          <option>베네수엘라</option><option>아이티</option><option>푸에르토리코</option><option>트리니다드토바고</option>
+          <option>파라과이</option><option>아르헨티나</option>
+        </optgroup>
+        <optgroup label="🌏 아시아 · 중동">
+          <option>인도네시아</option><option>인도</option><option>베트남</option><option>필리핀</option><option>미얀마</option>
+          <option>태국</option><option>라오스</option><option>티모르레스테</option><option>파푸아뉴기니</option>
+          <option>중국(윈난)</option><option>대만</option>
+        </optgroup>
+        <optgroup label="🌺 오세아니아">
+          <option>하와이(미국)</option><option>피지</option><option>바누아투</option><option>사모아</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>지역</label><input id="f_region" placeholder="ex) 예가체프, 나리뇨" /></div>
+      <div class="form-row"><label>산지 고도</label><input id="f_altitude" placeholder="ex) 1,800 ~ 2,200m" /></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>농장</label><input id="f_farm" placeholder="농장명" /></div>
+      <div class="form-row"><label>품종</label><input id="f_variety" placeholder="ex) 게이샤, 버번" /></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>가공</label><input id="f_process" placeholder="ex) 워시드, 내추럴" /></div>
+      <div class="form-row"><label>수상내역</label><input id="f_award" placeholder="ex) COE 2023 1위" /></div>
+    </div>
+    <div class="form-row"><label>원두 소개</label><textarea id="f_intro" placeholder="플레이버, 특징 등 원두 소개" style="min-height:64px"></textarea></div>
+
+    <div class="form-section-label">추출 레시피</div>
+    <div class="form-grid-3">
+      <div class="form-row"><label>그라인더 브랜드 및 명칭</label><input id="f_grinder" placeholder="ex) Comandante C40" /></div>
+      <div class="form-row"><label>분쇄도</label><input id="f_grind" placeholder="ex) 24클릭, Fine" /></div>
+      <div class="form-row"><label>추출 도구</label><input id="f_tool" placeholder="ex) 하리오 V60" /></div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-row"><label>추출비율 (원두:물)</label><input id="f_ratio" placeholder="ex) 1:15" /></div>
+      <div class="form-row"><label>원두양 (g)</label><input id="f_beans" type="number" placeholder="15" oninput="calcYield()" /></div>
+      <div class="form-row"><label>사용 물 양 (ml)</label><input id="f_water" type="number" placeholder="225" oninput="calcYield()" /></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>물 투여 시간</label><input id="f_pourtime" placeholder="ex) 0:30 뜸들이기 후 3회" /></div>
+      <div class="form-row"><label>전체 추출시간</label><input id="f_totaltime" placeholder="ex) 3분 30초" /></div>
+    </div>
+    <div class="form-row">
+      <label>레시피 (5줄 자유 작성)</label>
+      <textarea id="f_recipe" placeholder="0:00 뜸들이기 50ml&#10;0:30 75ml 투여&#10;1:10 100ml 투여&#10;2:00 추출 중단&#10;3:30 완료" style="min-height:110px; line-height:1.8"></textarea>
+    </div>
+
+    <div class="form-section-label">TDS 측정</div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>TDS 측정기명</label><input id="f_tdsname" placeholder="ex) 디플루이드" /></div>
+      <div class="form-row"><label>TDS 농도 (%)</label><input id="f_tds" type="number" step="0.01" placeholder="" oninput="calcYield()" /></div>
+    </div>
+    <div class="form-row"><label>추출된 커피양 (g)</label><input id="f_brewed" type="number" placeholder="" oninput="calcYield()" /></div>
+    <div class="tds-calc-display" id="yieldDisplay">수율 = TDS% × 추출량 ÷ 원두량 (값 입력 시 자동 계산)</div>
+
+    <div class="form-section-label">컵노트</div>
+    <div class="cupnote-form" id="cnForm"></div>
+    <div class="form-row"><label>총평</label><textarea id="f_review" placeholder="이 커피에 대한 전반적인 맛 총평을 자유롭게 적어주세요." style="min-height:72px"></textarea></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeWrite()">취소</button>
+      <button class="btn-submit" onclick="submitRecipe()">레시피 등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete PW Modal -->
+<div class="pw-modal-overlay" id="pwModal">
+  <div class="pw-modal">
+    <div class="pw-title">🔒 삭제 비밀번호 입력</div>
+    <input class="pw-input" id="pwInput" type="password" placeholder="비밀번호" />
+    <div class="pw-error" id="pwError"></div>
+    <div class="pw-actions">
+      <button class="pw-btn-cancel" onclick="closePw()">취소</button>
+      <button class="pw-btn-ok" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'brewlog_recipes_v4';
+const CN_KEYS = ['aroma','acidity','sweetness','body','umami','balance'];
+const CN_LABELS = ['향의 강도','산미','단맛','바디감','감칠맛','균형'];
+let recipes = [];
+let deleteTarget = null;
+let cnValues = {aroma:0,acidity:0,sweetness:0,body:0,umami:0,balance:0};
+
+function loadRecipes() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) recipes = JSON.parse(raw);
+  } catch(e) { recipes = []; }
+  renderAll();
+}
+
+function saveRecipes() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes)); } catch(e) {}
+}
+
+function buildCnForm() {
+  const wrap = document.getElementById('cnForm');
+  wrap.innerHTML = CN_KEYS.map((k,i) => `
+    <div class="cn-item">
+      <label>${CN_LABELS[i]}</label>
+      <div class="star-row">
+        ${[1,2,3,4,5].map(n => `<button type="button" class="star-btn" onclick="setCn('${k}',${n})" id="cn_${k}_${n}">${n}</button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function setCn(key, val) {
+  cnValues[key] = val;
+  [1,2,3,4,5].forEach(n => {
+    const b = document.getElementById('cn_'+key+'_'+n);
+    if (b) b.classList.toggle('active', n <= val);
+  });
+}
+
+function resetCn() {
+  CN_KEYS.forEach(k => { cnValues[k] = 0; });
+  CN_KEYS.forEach(k => { [1,2,3,4,5].forEach(n => { const b=document.getElementById('cn_'+k+'_'+n); if(b) b.classList.remove('active'); }); });
+}
+
+function drawRadar(canvasId, scores) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2;
+  const R = Math.min(W,H)/2 - 28;
+  ctx.clearRect(0,0,W,H);
+  const n = 6;
+  const angles = Array.from({length:n}, (_,i) => (Math.PI*2/n)*i - Math.PI/2);
+
+  for (let lvl = 1; lvl <= 5; lvl++) {
+    ctx.beginPath();
+    angles.forEach((a,i) => {
+      const r = R*lvl/5, x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*r;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = lvl===5 ? '#555' : '#2a2a2a';
+    ctx.lineWidth = lvl===5 ? 1 : 0.5;
+    ctx.stroke();
+  }
+  angles.forEach(a => {
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(a)*R, cy+Math.sin(a)*R);
+    ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=0.5; ctx.stroke();
+  });
+
+  const vals = CN_KEYS.map(k => scores[k]||0);
+  ctx.beginPath();
+  angles.forEach((a,i) => {
+    const r=R*vals[i]/5, x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.closePath();
+  ctx.fillStyle='rgba(201,168,76,0.25)'; ctx.fill();
+  ctx.strokeStyle='#C9A84C'; ctx.lineWidth=2; ctx.stroke();
+
+  angles.forEach((a,i) => {
+    const r=R*vals[i]/5, x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+    ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle='#C9A84C'; ctx.fill();
+  });
+
+  ctx.font = '10px sans-serif'; ctx.fillStyle='#888'; ctx.textAlign='center';
+  angles.forEach((a,i) => {
+    ctx.fillText(CN_LABELS[i], cx+Math.cos(a)*(R+20), cy+Math.sin(a)*(R+20)+3);
+  });
+}
+
+function renderAll() {
+  const list = document.getElementById('recipesList');
+  document.getElementById('totalCount').textContent = recipes.length;
+  document.getElementById('totalFollows').textContent = recipes.reduce((s,r)=>s+(r.follows||0),0);
+  if (!recipes.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><p>첫 번째 브루잉 레시피를 작성해보세요!</p></div>';
+    return;
+  }
+  list.innerHTML = recipes.map((r,i) => renderCard(r,i)).join('');
+  recipes.forEach((r,i) => { if (r.cupnote && CN_KEYS.some(k=>r.cupnote[k]>0)) drawRadar('radar_'+i, r.cupnote); });
+}
+
+function renderCard(r, i) {
+  const initials = (r.author||'?').slice(0,2).toUpperCase();
+  const dateStr = r.date ? new Date(r.date).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  const yv = r.yield_val ? r.yield_val+'%' : '—';
+  const cn = r.cupnote||{};
+  const hasCn = CN_KEYS.some(k=>cn[k]>0);
+
+  return `<div class="recipe-card" id="card_${i}">
+    <div class="card-header" onclick="toggleCard(${i})">
+      <div class="card-author">
+        <div class="author-avatar">${initials}</div>
+        <div>
+          <div class="author-name">${esc(r.author)}</div>
+          <div class="card-meta">${esc(r.country||'')}${r.region?' · '+esc(r.region):''}${dateStr?' · '+dateStr:''}</div>
+        </div>
+      </div>
+      <div class="card-right">
+        <button class="follow-badge ${r.followed?'checked':''}" onclick="toggleFollow(event,${i})">
+          ${r.followed?'✓':'+'} 따라해봤어요 <span>${r.follows||0}</span>
+        </button>
+        <button class="expand-arrow">▼</button>
+      </div>
+    </div>
+    <div class="card-summary">
+      ${r.country?`<span class="tag gold">${esc(r.country)}</span>`:''}
+      ${r.tool?`<span class="tag gold">${esc(r.tool)}</span>`:''}
+      ${r.variety?`<span class="tag">${esc(r.variety)}</span>`:''}
+      ${r.process?`<span class="tag">${esc(r.process)}</span>`:''}
+      ${r.grinder?`<span class="tag">${esc(r.grinder)}</span>`:''}
+      ${r.grind?`<span class="tag">${esc(r.grind)}</span>`:''}
+      ${r.ratio?`<span class="tag">${esc(r.ratio)}</span>`:''}
+    </div>
+    <div class="card-detail" id="detail_${i}">
+      <div class="section-title">원두 정보</div>
+      <div class="info-grid">
+        ${r.region?`<div class="info-item"><div class="info-label">지역</div><div class="info-val">${esc(r.region)}</div></div>`:''}
+        ${r.altitude?`<div class="info-item"><div class="info-label">산지 고도</div><div class="info-val">${esc(r.altitude)}</div></div>`:''}
+        ${r.farm?`<div class="info-item"><div class="info-label">농장</div><div class="info-val">${esc(r.farm)}</div></div>`:''}
+        ${r.variety?`<div class="info-item"><div class="info-label">품종</div><div class="info-val">${esc(r.variety)}</div></div>`:''}
+        ${r.process?`<div class="info-item"><div class="info-label">가공</div><div class="info-val">${esc(r.process)}</div></div>`:''}
+        ${r.award?`<div class="info-item"><div class="info-label">수상내역</div><div class="info-val">${esc(r.award)}</div></div>`:''}
+      </div>
+      ${r.intro?`<div class="text-block">${esc(r.intro)}</div>`:''}
+
+      <div class="section-title">추출 레시피</div>
+      <div class="info-grid">
+        ${r.grinder?`<div class="info-item"><div class="info-label">그라인더</div><div class="info-val">${esc(r.grinder)}</div></div>`:''}
+        ${r.grind?`<div class="info-item"><div class="info-label">분쇄도</div><div class="info-val">${esc(r.grind)}</div></div>`:''}
+        ${r.tool?`<div class="info-item"><div class="info-label">추출 도구</div><div class="info-val">${esc(r.tool)}</div></div>`:''}
+        ${r.ratio?`<div class="info-item"><div class="info-label">추출비율</div><div class="info-val">${esc(r.ratio)}</div></div>`:''}
+        ${r.beans?`<div class="info-item"><div class="info-label">원두양</div><div class="info-val">${esc(r.beans)}g</div></div>`:''}
+        ${r.water?`<div class="info-item"><div class="info-label">물 양</div><div class="info-val">${esc(r.water)}ml</div></div>`:''}
+        ${r.pourtime?`<div class="info-item"><div class="info-label">물 투여 시간</div><div class="info-val">${esc(r.pourtime)}</div></div>`:''}
+        ${r.totaltime?`<div class="info-item"><div class="info-label">전체 추출시간</div><div class="info-val">${esc(r.totaltime)}</div></div>`:''}
+      </div>
+      ${r.recipe?`<div class="text-block">${esc(r.recipe)}</div>`:''}
+
+      ${(r.tdsname||r.tds||r.brewed||r.yield_val)?`
+      <div class="section-title">TDS 분석</div>
+      <div class="tds-box">
+        <div class="tds-item"><div class="tds-label">TDS 측정기</div><div style="font-size:13px;color:var(--gold-light)">${esc(r.tdsname||'—')}</div></div>
+        <div class="tds-item"><div class="tds-label">TDS 농도</div><div class="tds-value">${r.tds?r.tds+'%':'—'}</div></div>
+        <div class="tds-item"><div class="tds-label">추출량</div><div class="tds-value">${r.brewed?r.brewed+'g':'—'}</div></div>
+        <div class="tds-item"><div class="tds-label">수율</div><div class="tds-value">${yv}</div></div>
+      </div>`:''}
+
+      ${(hasCn||r.review)?`
+      <div class="section-title">컵노트</div>
+      <div class="cupnote-wrap">
+        ${hasCn?`
+        <div class="cupnote-radar"><canvas id="radar_${i}" width="200" height="200"></canvas></div>
+        <div class="cupnote-scores">
+          ${CN_KEYS.map((k,j)=>`
+          <div class="score-row">
+            <span class="score-label">${CN_LABELS[j]}</span>
+            <div class="score-dots">${[1,2,3,4,5].map(n=>`<div class="dot ${n<=(cn[k]||0)?'on':''}"></div>`).join('')}</div>
+            <span style="font-size:11px;color:var(--gold);margin-left:4px">${cn[k]||0}/5</span>
+          </div>`).join('')}
+        </div>`:''}
+      </div>
+      ${r.review?`<div class="text-block" style="margin-top:10px">${esc(r.review)}</div>`:''}`:''}
+
+      <div class="card-delete"><button class="btn-delete" onclick="askDelete(${i})">삭제</button></div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(i) {
+  const d = document.getElementById('detail_'+i);
+  const wasOpen = d.classList.contains('open');
+  d.classList.toggle('open');
+  if (!wasOpen && recipes[i].cupnote) setTimeout(()=>drawRadar('radar_'+i, recipes[i].cupnote), 50);
+}
+
+function toggleFollow(e, i) {
+  e.stopPropagation();
+  if (!recipes[i].follows) recipes[i].follows=0;
+  recipes[i].followed = !recipes[i].followed;
+  recipes[i].follows += recipes[i].followed ? 1 : -1;
+  if (recipes[i].follows < 0) recipes[i].follows=0;
+  saveRecipes(); renderAll();
+}
+
+function openWrite() {
+  document.getElementById('writeModal').classList.add('open');
+  const now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  document.getElementById('f_date').value = now.toISOString().slice(0,16);
+  document.getElementById('yieldDisplay').textContent = '수율 = TDS% × 추출량 ÷ 원두량 (값 입력 시 자동 계산)';
+  buildCnForm(); resetCn();
+}
+
+function closeWrite() {
+  document.getElementById('writeModal').classList.remove('open');
+  ['f_author','f_date','f_country','f_region','f_altitude','f_farm','f_variety','f_process',
+   'f_award','f_intro','f_grinder','f_grind','f_tool','f_ratio','f_beans','f_water',
+   'f_pourtime','f_totaltime','f_recipe','f_tdsname','f_tds','f_brewed','f_review']
+  .forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  resetCn();
+}
+
+function calcYield() {
+  const tds=parseFloat(document.getElementById('f_tds').value);
+  const brewed=parseFloat(document.getElementById('f_brewed').value);
+  const beans=parseFloat(document.getElementById('f_beans').value);
+  if (tds>0&&brewed>0&&beans>0) {
+    const y=((tds*brewed)/beans).toFixed(2);
+    document.getElementById('yieldDisplay').textContent=`수율 = ${tds}% × ${brewed}g ÷ ${beans}g = ${y}%`;
+    return y;
+  }
+  document.getElementById('yieldDisplay').textContent='수율 = TDS% × 추출량 ÷ 원두량 (값 입력 시 자동 계산)';
+  return null;
+}
+
+function submitRecipe() {
+  const author=document.getElementById('f_author').value.trim();
+  const country=document.getElementById('f_country').value;
+  if (!author){alert('작성자를 입력해주세요.');return;}
+  if (!country){alert('국가를 선택해주세요.');return;}
+  const tds=parseFloat(document.getElementById('f_tds').value);
+  const brewed=parseFloat(document.getElementById('f_brewed').value);
+  const beans=parseFloat(document.getElementById('f_beans').value);
+  let yield_val=null;
+  if (tds>0&&brewed>0&&beans>0) yield_val=((tds*brewed)/beans).toFixed(2);
+  const cupnote={};
+  CN_KEYS.forEach(k=>{ cupnote[k]=cnValues[k]||0; });
+  recipes.unshift({
+    author, country,
+    date:document.getElementById('f_date').value,
+    region:document.getElementById('f_region').value,
+    altitude:document.getElementById('f_altitude').value,
+    farm:document.getElementById('f_farm').value,
+    variety:document.getElementById('f_variety').value,
+    process:document.getElementById('f_process').value,
+    award:document.getElementById('f_award').value,
+    intro:document.getElementById('f_intro').value,
+    grinder:document.getElementById('f_grinder').value,
+    grind:document.getElementById('f_grind').value,
+    tool:document.getElementById('f_tool').value,
+    ratio:document.getElementById('f_ratio').value,
+    beans:document.getElementById('f_beans').value,
+    water:document.getElementById('f_water').value,
+    pourtime:document.getElementById('f_pourtime').value,
+    totaltime:document.getElementById('f_totaltime').value,
+    recipe:document.getElementById('f_recipe').value,
+    tdsname:document.getElementById('f_tdsname').value,
+    tds:document.getElementById('f_tds').value,
+    brewed:document.getElementById('f_brewed').value,
+    yield_val, cupnote,
+    review:document.getElementById('f_review').value,
+    follows:0, followed:false
+  });
+  saveRecipes(); closeWrite(); renderAll();
+}
+
+function askDelete(i) {
+  deleteTarget=i;
+  document.getElementById('pwInput').value='';
+  document.getElementById('pwError').textContent='';
+  document.getElementById('pwModal').classList.add('open');
+  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+}
+function closePw(){document.getElementById('pwModal').classList.remove('open');deleteTarget=null;}
+function confirmDelete(){
+  if (document.getElementById('pwInput').value==='9876'){
+    recipes.splice(deleteTarget,1); saveRecipes(); closePw(); renderAll();
+  } else {
+    document.getElementById('pwError').textContent='비밀번호가 올바르지 않습니다.';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwInput').focus();
+  }
+}
+document.getElementById('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmDelete();});
+
+function esc(s){
+  if(!s)return'';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+loadRecipes();
+</script>
+</body>
+</html>
